@@ -46,6 +46,37 @@ router.post("/", async (req, res) => {
   res.status(201).json(token);
 });
 
+router.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Please provide username and password!",
+    });
+  }
+
+  const user = await User.findOne({ username });
+  if (!user) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid credentials!" });
+  }
+
+  const validPassword = await bcrypt.compare(password, user.password);
+  if (!validPassword) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid credentials!" });
+  }
+
+  const token = generateToken({
+    _id: user._id,
+    username: user.username,
+  });
+
+  res.json(token);
+});
+
 const generateToken = (data) => {
   return jwt.sign(data, process.env.JWT_KEY);
 };
