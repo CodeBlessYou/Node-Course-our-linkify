@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const User = require("../models/users");
+const auth = require("../middleware/auth");
 const router = express.Router();
 
 router.post("/", async (req, res) => {
@@ -75,6 +76,16 @@ router.post("/login", async (req, res) => {
   });
 
   res.json(token);
+});
+
+router.get("/", auth, async (req, res) => {
+  const user = await User.findById(req.user._id).select("-password");
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found!" });
+  }
+
+  res.json(user);
 });
 
 const generateToken = (data) => {
