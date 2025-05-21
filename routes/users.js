@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 
 const User = require("../models/users");
 const auth = require("../middleware/auth");
+const sendEmail = require("../config/amazon-ses");
 const router = express.Router();
 
 router.post("/", async (req, res) => {
@@ -105,6 +106,9 @@ router.post("/request-password-reset", async (req, res) => {
   await user.save();
 
   // Send email with this token
+  const subject = "Password Reset Request for your linkify account";
+  const text = `Click this link to reset your password: https://ourlinkify.com/reset-password?resetToken=${resetToken}`;
+  sendEmail(user.email, subject, text);
 
   res.json({
     message: "Password reset link sent to email",
