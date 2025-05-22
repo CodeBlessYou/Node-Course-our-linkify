@@ -180,6 +180,63 @@ router.post("/:userId/follow", auth, async (req, res) => {
   }
 });
 
+router.post("/reject-request/:requesterId", auth, async (req, res) => {
+  const requesterId = req.params.requesterId;
+  const currentUserId = req.user._id;
+
+  if (requesterId === currentUserId)
+    return res.status(400).json({ message: "You can't follow yourself!" });
+
+  const requesterUser = await User.findById(requesterId);
+  if (!requesterUser)
+    return res.status(404).json({ message: "User not found!" });
+
+  const currentUser = await User.findById(currentUserId);
+  if (!currentUser) return res.status(404).json({ message: "User not found!" });
+
+  if (!currentUser.followRequests.includes(requesterId)) {
+    return res.status(400).json({ message: "No follow request found!" });
+  }
+
+  const updatedRequests = currentUser.followRequests.filter(
+    (id) => id.toString() !== requesterId
+  );
+  currentUser.followRequests = updatedRequests;
+  await currentUser.save();
+
+  res.json({ message: "Follow request rejected" });
+});
+
+router.post("/accept-request/:requesterId", auth, async (req, res) => {
+  const requesterId = req.params.requesterId;
+  const currentUserId = req.user._id;
+
+  if (requesterId === currentUserId)
+    return res.status(400).json({ message: "You can't follow yourself!" });
+
+  const requesterUser = await User.findById(requesterId);
+  if (!requesterUser)
+    return res.status(404).json({ message: "User not found!" });
+
+  const currentUser = await User.findById(currentUserId);
+  if (!currentUser) return res.status(404).json({ message: "User not found!" });
+
+  if (!currentUser.followRequests.includes(requesterId)) {
+    return res.status(400).json({ message: "No follow request found!" });
+  }
+
+  const updatedRequests = currentUser.followRequests.filter(
+    (id) => id.toString() !== requesterId
+  );
+  currentUser.followRequests = updatedRequests;
+  currentUser.followers.push(requesterId);
+  requesterUser.following.push(currentUserId);
+  await currentUser.save();
+  await requesterUser.save();
+
+  res.json({ message: "Follow request accepted" });
+});
+
 const generateToken = (data) => {
   return jwt.sign(data, process.env.JWT_KEY);
 };
