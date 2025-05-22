@@ -237,6 +237,50 @@ router.post("/accept-request/:requesterId", auth, async (req, res) => {
   res.json({ message: "Follow request accepted" });
 });
 
+router.get("/:userId/followers", auth, async (req, res) => {
+  const userId = req.params.userId;
+  const currentUserId = req.user._id;
+
+  const user = await User.findById(userId).populate(
+    "followers",
+    "_id username"
+  );
+  if (!user) return res.status(404).json({ message: "User not found!" });
+
+  const currentUser = await User.findById(currentUserId);
+  if (!currentUser) return res.status(404).json({ message: "User not found!" });
+
+  if (currentUser.following.includes(userId) || !user.isPrivate) {
+    return res.json(user.followers);
+  } else {
+    return res
+      .status(400)
+      .json({ message: "Can't get followers list - Account is private." });
+  }
+});
+
+router.get("/:userId/following", auth, async (req, res) => {
+  const userId = req.params.userId;
+  const currentUserId = req.user._id;
+
+  const user = await User.findById(userId).populate(
+    "following",
+    "_id username"
+  );
+  if (!user) return res.status(404).json({ message: "User not found!" });
+
+  const currentUser = await User.findById(currentUserId);
+  if (!currentUser) return res.status(404).json({ message: "User not found!" });
+
+  if (currentUser.following.includes(userId) || !user.isPrivate) {
+    return res.json(user.followers);
+  } else {
+    return res
+      .status(400)
+      .json({ message: "Can't get following list - Account is private." });
+  }
+});
+
 const generateToken = (data) => {
   return jwt.sign(data, process.env.JWT_KEY);
 };
