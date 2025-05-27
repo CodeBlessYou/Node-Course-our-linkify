@@ -1,6 +1,8 @@
 const express = require("express");
 const auth = require("../middleware/auth");
 const postUpload = require("../config/multer-upload");
+const path = require("path");
+const fs = require("fs/promises");
 const Post = require("../models/posts");
 const User = require("../models/users");
 const router = express.Router();
@@ -73,6 +75,30 @@ router.get("/following", auth, async (req, res) => {
   const hasNextPage = posts.length === limit ? true : false;
 
   res.json({ posts, nextCursor, hasNextPage });
+});
+
+router.delete("/:postId", auth, async (req, res) => {
+  const postId = req.params.postId;
+  const userId = req.user._id;
+
+  const post = await Post.findById(postId);
+  if (!post) return res.status(404).json({ message: "Post not found!" });
+
+  if (post.user.toString() !== userId)
+    return res.status(403).json({ message: "Unauthorized to delte this post" });
+
+  post.media.forEach(async (file) => {
+    const filePath = path.join(__dirname, "../uploads/posts", file.name);
+    try {
+      await fs.unlink(filePath);
+    } catch (error) {
+      console.error(`Error in deleting file: ${filePath}`, error);
+    }
+  });
+
+  await post.deleteOne();
+
+  res.json({ message: "Post deleted successfully!" });
 });
 
 module.exports = router;
