@@ -41,4 +41,57 @@ router.get("/:chatId/messages", auth, async (req, res) => {
   res.json({ messages, hasPreviousMessages, page, limit });
 });
 
+router.post("/createChat", auth, async (req, res) => {
+  const userId = req.user._id;
+  const receiverId = req.body.receiverId;
+  if (!receiverId)
+    return res.status(400).json({ message: "Receiver required!" });
+
+  let chat = await Chat.findOne({
+    participants: { $all: [userId, receiverId], $size: 2 },
+  });
+
+  if (!chat) {
+    chat = new Chat({
+      participants: [userId, receiverId],
+    });
+    await chat.save();
+  }
+
+  res.status(201).json(chat);
+});
+
+router.post("/sendMessages", auth, async (req, res) => {
+  const userId = req.user._id;
+  const { content, chatId } = req.body;
+
+  if (!content)
+    return res
+      .status(400)
+      .json({ message: "Content(message-text) is must required!" });
+
+  const chat = await Chat.findById(chatId);
+  if (!chat || !chat.participants.includes(userId)) {
+    return res.status(403).json({ message: "Access denied!" });
+  }
+
+  const newMessage = new Message({
+    chatId: chat._id,
+    sender: userId,
+    content,
+  });
+
+  await newMessage.save();
+
+  chat.lastMessage = newMessage._id;
+  await chat.save();
+
+  const populateMessage = await Message.findById(newMessage._id).populate(
+    "sender",
+    "_id username"
+  );
+
+  res.status(201).json({ newMessage: populateMessage });
+});
+
 module.exports = router;
