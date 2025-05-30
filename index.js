@@ -58,7 +58,7 @@ io.on("connection", (socket) => {
   socket.on("sendMessage", (data) => {
     console.log("New message from frontend:", data);
 
-    socket.emit("getMessage", data);
+    io.emit("getMessage", data);
   });
 });
 
