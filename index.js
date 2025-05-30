@@ -3,6 +3,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const { Server } = require("socket.io");
+const http = require("http");
 
 const userRoutes = require("./routes/users");
 const postRoutes = require("./routes/posts");
@@ -12,6 +14,13 @@ const logger = require("./config/logger");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 
 mongoose
   .connect(process.env.DB)
@@ -43,4 +52,8 @@ app.use((error, req, res, next) => {
   return res.status(500).json({ message: "Internal Server Error!" });
 });
 
-app.listen(PORT, () => console.log(`Server is running on port ${PORT}...`));
+io.on("connection", () => {
+  console.log("A user connected");
+});
+
+server.listen(PORT, () => console.log(`Server is running on port ${PORT}...`));
