@@ -11,7 +11,18 @@ chatFrm.addEventListener("submit", (event) => {
   // Prevent the default form submission (Stop page refresh on submit)
   event.preventDefault();
 
+  socket.emit("sendMessage", {
+    sender: { _id: 123, username: username.value },
+    content: input.value,
+    createdAt: new Date(),
+    status: "sent",
+  });
+
   input.value = "";
+});
+
+socket.on("getMessage", (data) => {
+  displayMessage(data);
 });
 
 // To display the message in chat list

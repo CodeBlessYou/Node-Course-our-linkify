@@ -52,8 +52,14 @@ app.use((error, req, res, next) => {
   return res.status(500).json({ message: "Internal Server Error!" });
 });
 
-io.on("connection", () => {
+io.on("connection", (socket) => {
   console.log("A user connected");
+
+  socket.on("sendMessage", (data) => {
+    console.log("New message from frontend:", data);
+
+    socket.emit("getMessage", data);
+  });
 });
 
 server.listen(PORT, () => console.log(`Server is running on port ${PORT}...`));
