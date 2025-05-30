@@ -60,6 +60,14 @@ io.on("connection", (socket) => {
     console.log(`User ${socket.id} joined room: ${chatId}`);
   });
 
+  socket.on("typing", ({ chatId, username }) => {
+    socket.to(chatId).emit("showTyping", `${username} is typing...`);
+  });
+
+  socket.on("stopTyping", ({ chatId, username }) => {
+    socket.to(chatId).emit("hideTyping", username);
+  });
+
   socket.on("sendMessage", (data) => {
     console.log("New message from frontend:", data);
 
