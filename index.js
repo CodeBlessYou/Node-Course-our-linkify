@@ -78,9 +78,13 @@ io.use((socket, next) => {
 
 io.on("connection", (socket) => {
   console.log("A user connected");
+  const userId = socket.user._id;
 
   socket.emit("userData", socket.user);
-  onlineUsers.set(socket.user._id, socket.id);
+  if (!onlineUsers.has(userId)) {
+    onlineUsers.set(userId, new Set());
+  }
+  onlineUsers.get(userId).add(socket.id);
   console.log("Online users", onlineUsers);
 
   socket.on("joinRoom", (chatId) => {
@@ -135,7 +139,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    onlineUsers.delete(socket.user._id);
+    onlineUsers.get(userId).delete(socket.id);
+
+    if (onlineUsers.get(userId).size === 0) {
+      onlineUsers.delete(userId);
+    }
 
     console.log("Online users", onlineUsers);
   });
