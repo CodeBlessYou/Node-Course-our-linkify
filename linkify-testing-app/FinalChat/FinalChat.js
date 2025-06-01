@@ -82,6 +82,10 @@ if (token) {
     console.log("Get Message Data:", data);
     displayMessage(data, true);
 
+    if (data.sender._id !== user._id) {
+      socket.emit("markMessagesAsSeen", chatId.value);
+    }
+
     smoothScrollToBottom();
   });
 
