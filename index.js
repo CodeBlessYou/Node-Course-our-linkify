@@ -10,6 +10,9 @@ const userRoutes = require("./routes/users");
 const postRoutes = require("./routes/posts");
 const chatRoutes = require("./routes/chats");
 
+const Chat = require("./models/chats");
+const Message = require("./models/messages");
+
 const logger = require("./config/logger");
 
 const app = express();
@@ -68,11 +71,39 @@ io.on("connection", (socket) => {
     socket.to(chatId).emit("hideTyping", username);
   });
 
-  socket.on("sendMessage", (data) => {
-    console.log("New message from frontend:", data);
+  socket.on("sendMessage", async ({ content, chatId, userId }) => {
+    if (!content) {
+      socket.emit(
+        "errorInSendMessage",
+        "Content(message-text) is must required!"
+      );
+      return;
+    }
+
+    const chat = await Chat.findById(chatId);
+    if (!chat || !chat.participants.includes(userId)) {
+      socket.emit("errorInSendMessage", "Access Denied");
+      return;
+    }
+
+    const newMessage = new Message({
+      chatId: chat._id,
+      sender: userId,
+      content,
+    });
+
+    await newMessage.save();
+
+    chat.lastMessage = newMessage._id;
+    await chat.save();
+
+    const populateMessage = await Message.findById(newMessage._id).populate(
+      "sender",
+      "_id username"
+    );
 
     // io.emit("getMessage", data);
-    io.to(data.chatId).emit("getMessage", data);
+    io.to(chatId).emit("getMessage", populateMessage);
   });
 });
 
