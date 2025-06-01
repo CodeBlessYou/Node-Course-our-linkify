@@ -56,6 +56,8 @@ app.use((error, req, res, next) => {
   return res.status(500).json({ message: "Internal Server Error!" });
 });
 
+const onlineUsers = new Map();
+
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
 
@@ -78,6 +80,8 @@ io.on("connection", (socket) => {
   console.log("A user connected");
 
   socket.emit("userData", socket.user);
+  onlineUsers.set(socket.user._id, socket.id);
+  console.log("Online users", onlineUsers);
 
   socket.on("joinRoom", (chatId) => {
     socket.join(chatId);
@@ -128,6 +132,12 @@ io.on("connection", (socket) => {
 
     // io.emit("getMessage", data);
     io.to(chatId).emit("getMessage", populateMessage);
+  });
+
+  socket.on("disconnect", () => {
+    onlineUsers.delete(socket.user._id);
+
+    console.log("Online users", onlineUsers);
   });
 });
 
