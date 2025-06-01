@@ -87,6 +87,52 @@ io.on("connection", (socket) => {
   onlineUsers.get(userId).add(socket.id);
   console.log("Online users", onlineUsers);
 
+  socket.on("markMessagesAsDelivered", async () => {
+    // Find all the chat messages in which our user is available
+    const chatIds = await Chat.find({
+      participants: userId,
+    }).distinct("_id");
+
+    const undeliveredMessage = await Message.find({
+      chatId: { $in: chatIds },
+      status: "sent",
+      sender: { $ne: userId },
+    }).select("_id chatId sender");
+
+    if (undeliveredMessage.length > 0) {
+      await Message.updateMany(
+        { _id: { $in: undeliveredMessage.map((msg) => msg._id) } },
+        { $set: { status: "delivered" } }
+      );
+    }
+
+    // Step 1: Group chatIds by sender
+    const groupedChatIds = undeliveredMessage.reduce((acc, msg) => {
+      if (!acc[msg.sender]) {
+        acc[msg.sender] = new Set();
+      }
+      acc[msg.sender].add(msg.chatId.toString());
+      return acc;
+    }, {});
+
+    // Convert Sets to Array
+    for (const sender in groupedChatIds) {
+      groupedChatIds[sender] = [...groupedChatIds[sender]];
+    }
+
+    // Step 2: Send event to online users only
+    for (const senderId in groupedChatIds) {
+      const sockets = onlineUsers.get(senderId);
+      const chatIds = groupedChatIds[senderId];
+
+      if (sockets) {
+        sockets.forEach((socketId) => {
+          io.to(socketId).emit("messageStatusUpdated", { chatIds });
+        });
+      }
+    }
+  });
+
   socket.on("joinRoom", (chatId) => {
     socket.join(chatId);
     console.log(`User ${socket.id} joined room: ${chatId}`);
@@ -118,10 +164,15 @@ io.on("connection", (socket) => {
       return;
     }
 
+    const recipients = chat.participants.filter(
+      (id) => id.toString() !== userId
+    );
+
     const newMessage = new Message({
       chatId: chat._id,
       sender: userId,
       content,
+      status: onlineUsers.has(recipients[0].toString()) ? "delivered" : "sent",
     });
 
     await newMessage.save();
