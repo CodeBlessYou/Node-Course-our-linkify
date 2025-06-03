@@ -15,6 +15,7 @@ const io = new Server(server, {
 });
 
 require("./startups/db")();
+require("./startups/prod")(app);
 require("./startups/routes")(app);
 require("./startups/socket")(io);
 
