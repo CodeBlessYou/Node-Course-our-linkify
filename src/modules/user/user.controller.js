@@ -1,14 +1,11 @@
-const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-const User = require("../models/users");
-const auth = require("../middleware/auth");
-const sendEmail = require("../config/amazon-ses");
-const sendSMTPEmail = require("../config/smtp");
-const router = express.Router();
+const User = require("./user.model");
+const sendEmail = require("../../config/amazon-ses");
+const sendSMTPEmail = require("../../config/smtp");
 
-router.post("/", async (req, res) => {
+const registerUser = async (req, res) => {
   const { username, email, password } = req.body;
 
   if (!username || !email || !password) {
@@ -47,9 +44,9 @@ router.post("/", async (req, res) => {
   });
 
   res.status(201).json(token);
-});
+};
 
-router.post("/login", async (req, res) => {
+const loginUser = async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({
@@ -78,9 +75,9 @@ router.post("/login", async (req, res) => {
   });
 
   res.json(token);
-});
+};
 
-router.get("/", auth, async (req, res) => {
+const getUser = async (req, res) => {
   const user = await User.findById(req.user._id).select("-password");
 
   if (!user) {
@@ -88,9 +85,9 @@ router.get("/", auth, async (req, res) => {
   }
 
   res.json(user);
-});
+};
 
-router.post("/request-password-reset", async (req, res) => {
+const requestResetPassword = async (req, res) => {
   const { email } = req.body;
   let user = await User.findOne({ email: email });
   if (!user)
@@ -116,9 +113,9 @@ router.post("/request-password-reset", async (req, res) => {
     message: "Password reset link sent to email",
     resetToken: resetToken,
   });
-});
+};
 
-router.post("/reset-password", async (req, res) => {
+const resetPassword = async (req, res) => {
   const { resetToken, newPassword } = req.body;
 
   // Step 1 - Verify the token
@@ -141,9 +138,9 @@ router.post("/reset-password", async (req, res) => {
   await user.save();
 
   res.json({ message: "Password reset successfully!" });
-});
+};
 
-router.post("/:userId/follow", auth, async (req, res) => {
+const followUser = async (req, res) => {
   const userId = req.params.userId;
   const currentUserId = req.user._id;
 
@@ -178,9 +175,9 @@ router.post("/:userId/follow", auth, async (req, res) => {
       return res.json({ message: "User followed successfully." });
     }
   }
-});
+};
 
-router.post("/reject-request/:requesterId", auth, async (req, res) => {
+const rejectFollowRequest = async (req, res) => {
   const requesterId = req.params.requesterId;
   const currentUserId = req.user._id;
 
@@ -205,9 +202,9 @@ router.post("/reject-request/:requesterId", auth, async (req, res) => {
   await currentUser.save();
 
   res.json({ message: "Follow request rejected" });
-});
+};
 
-router.post("/accept-request/:requesterId", auth, async (req, res) => {
+const acceptFollowRequest = async (req, res) => {
   const requesterId = req.params.requesterId;
   const currentUserId = req.user._id;
 
@@ -235,9 +232,9 @@ router.post("/accept-request/:requesterId", auth, async (req, res) => {
   await requesterUser.save();
 
   res.json({ message: "Follow request accepted" });
-});
+};
 
-router.get("/:userId/followers", auth, async (req, res) => {
+const getOtherUserFollowerList = async (req, res) => {
   const userId = req.params.userId;
   const currentUserId = req.user._id;
 
@@ -257,9 +254,9 @@ router.get("/:userId/followers", auth, async (req, res) => {
       .status(400)
       .json({ message: "Can't get followers list - Account is private." });
   }
-});
+};
 
-router.get("/:userId/following", auth, async (req, res) => {
+const getOtherUserFollowingList = async (req, res) => {
   const userId = req.params.userId;
   const currentUserId = req.user._id;
 
@@ -279,9 +276,9 @@ router.get("/:userId/following", auth, async (req, res) => {
       .status(400)
       .json({ message: "Can't get following list - Account is private." });
   }
-});
+};
 
-router.post("/:userId/unfollow", auth, async (req, res) => {
+const unfollowUser = async (req, res) => {
   const userId = req.params.userId;
   const currentUserId = req.user._id;
 
@@ -308,10 +305,22 @@ router.post("/:userId/unfollow", auth, async (req, res) => {
   await currentUser.save();
 
   res.json({ message: "User unfollowed successfully!" });
-});
+};
 
 const generateToken = (data) => {
   return jwt.sign(data, process.env.JWT_KEY);
 };
 
-module.exports = router;
+module.exports = {
+  registerUser,
+  loginUser,
+  getUser,
+  requestResetPassword,
+  resetPassword,
+  followUser,
+  rejectFollowRequest,
+  acceptFollowRequest,
+  getOtherUserFollowerList,
+  getOtherUserFollowingList,
+  unfollowUser,
+};

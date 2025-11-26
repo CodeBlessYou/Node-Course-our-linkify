@@ -1,10 +1,7 @@
-const auth = require("../middleware/auth");
-const Chat = require("../models/chats");
-const Message = require("../models/messages");
+const Chat = require("./chat.model");
+const Message = require("../message/message.model");
 
-const router = require("express").Router();
-
-router.get("/", auth, async (req, res) => {
+const getChats = async (req, res) => {
   const userId = req.user._id;
 
   const chats = await Chat.find({ participants: userId })
@@ -20,9 +17,9 @@ router.get("/", auth, async (req, res) => {
     .sort({ updatedAt: -1 });
 
   res.json({ chats });
-});
+};
 
-router.get("/:chatId/messages", auth, async (req, res) => {
+const getChatMessages = async (req, res) => {
   const { chatId } = req.params;
 
   let { page = 1, limit = 10 } = req.query;
@@ -39,9 +36,9 @@ router.get("/:chatId/messages", auth, async (req, res) => {
   const hasPreviousMessages = messages.length === limit ? true : false;
 
   res.json({ messages, hasPreviousMessages, page, limit });
-});
+};
 
-router.post("/createChat", auth, async (req, res) => {
+const createChat = async (req, res) => {
   const userId = req.user._id;
   const receiverId = req.body.receiverId;
   if (!receiverId)
@@ -59,42 +56,9 @@ router.post("/createChat", auth, async (req, res) => {
   }
 
   res.status(201).json(chat);
-});
+};
 
-router.post("/sendMessages", auth, async (req, res) => {
-  const userId = req.user._id;
-  const { content, chatId } = req.body;
-
-  if (!content)
-    return res
-      .status(400)
-      .json({ message: "Content(message-text) is must required!" });
-
-  const chat = await Chat.findById(chatId);
-  if (!chat || !chat.participants.includes(userId)) {
-    return res.status(403).json({ message: "Access denied!" });
-  }
-
-  const newMessage = new Message({
-    chatId: chat._id,
-    sender: userId,
-    content,
-  });
-
-  await newMessage.save();
-
-  chat.lastMessage = newMessage._id;
-  await chat.save();
-
-  const populateMessage = await Message.findById(newMessage._id).populate(
-    "sender",
-    "_id username"
-  );
-
-  res.status(201).json({ newMessage: populateMessage });
-});
-
-router.post("/createGroup", auth, async (req, res) => {
+const createGroup = async (req, res) => {
   const userId = req.user._id;
   const { participants, groupName } = req.body;
 
@@ -110,6 +74,6 @@ router.post("/createGroup", auth, async (req, res) => {
   await chat.save();
 
   res.status(201).json(chat);
-});
+};
 
-module.exports = router;
+module.exports = { getChats, getChatMessages, createChat, createGroup };
